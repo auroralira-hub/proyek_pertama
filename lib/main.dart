@@ -1,9 +1,9 @@
-// Full single-file Flutter app.
-// Replace your current main.dart with this file.
-// Polished, colorful homepage with AnimatedContainer, AnimationController,
-// Hero animations, responsive LayoutBuilder, nice page transitions.
-// Keeps in-memory users: dosen Rofika (rofika12) and user lira (liralira).
+// Full single-file Flutter app (fixed).
+// Replace your project's main.dart with this file.
+// Fixes: Timer import/management, replaced some _route(...) calls that caused "method not found"
+// errors by using MaterialPageRoute; removed unused top-level _route; preserved animations & UI.
 
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 
@@ -132,8 +132,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   void initState() {
     super.initState();
     _bgController = AnimationController(vsync: this, duration: const Duration(seconds: 6))..repeat(reverse: true);
-    _beginAnim = AlignmentTween(begin: Alignment.topLeft, end: Alignment(-0.3, -1)).animate(CurvedAnimation(parent: _bgController, curve: Curves.easeInOut));
-    _endAnim = AlignmentTween(begin: Alignment.bottomRight, end: Alignment(0.8, 1)).animate(CurvedAnimation(parent: _bgController, curve: Curves.easeInOut));
+    _beginAnim = AlignmentTween(begin: Alignment.topLeft, end: const Alignment(-0.3, -1)).animate(CurvedAnimation(parent: _bgController, curve: Curves.easeInOut));
+    _endAnim = AlignmentTween(begin: Alignment.bottomRight, end: const Alignment(0.8, 1)).animate(CurvedAnimation(parent: _bgController, curve: Curves.easeInOut));
   }
 
   @override
@@ -250,7 +250,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               height: 48,
               width: 48,
               child: ElevatedButton(
-                onPressed: () => Navigator.push(context, _route(const RegisterPage())),
+                onPressed: () => Navigator.push(context, PageRouteBuilder(pageBuilder: (_, anim, __) => ScaleTransition(scale: anim, child: const RegisterPage()), transitionDuration: const Duration(milliseconds: 420))),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, shape: const CircleBorder(), elevation: 6),
                 child: const Icon(Icons.arrow_forward, color: Colors.white),
               ),
@@ -259,18 +259,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           const SizedBox(height: 8),
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             const Text('Belum punya akun?'),
-            TextButton(onPressed: () => Navigator.push(context, _route(const RegisterPage())), child: const Text('Daftar', style: TextStyle(fontWeight: FontWeight.bold))),
+            TextButton(onPressed: () => Navigator.push(context, PageRouteBuilder(pageBuilder: (_, anim, __) => ScaleTransition(scale: anim, child: const RegisterPage()), transitionDuration: const Duration(milliseconds: 420))), child: const Text('Daftar', style: TextStyle(fontWeight: FontWeight.bold))),
           ]),
         ]),
       ),
-    );
-  }
-
-  PageRouteBuilder _route(Widget page) {
-    return PageRouteBuilder(
-      pageBuilder: (_, anim, __) => page,
-      transitionsBuilder: (_, anim, __, child) => ScaleTransition(scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack), child: FadeTransition(opacity: anim, child: child)),
-      transitionDuration: const Duration(milliseconds: 420),
     );
   }
 }
@@ -325,11 +317,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Username sudah ada')));
       return;
     }
-    Navigator.pushAndRemoveUntil(context, _route(UserHomePage(user: u)), (r) => false);
-  }
-
-  PageRouteBuilder _route(Widget page) {
-    return PageRouteBuilder(pageBuilder: (_, anim, __) => page, transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child), transitionDuration: const Duration(milliseconds: 420));
+    Navigator.pushAndRemoveUntil(context, PageRouteBuilder(pageBuilder: (_, anim, __) => FadeTransition(opacity: anim, child: UserHomePage(user: u)), transitionDuration: const Duration(milliseconds: 420)), (r) => false);
   }
 
   @override
@@ -479,7 +467,13 @@ class _UserHomePageState extends State<UserHomePage> with TickerProviderStateMix
         title: Text('Home - ${widget.user.name}'),
         backgroundColor: Colors.indigo,
         actions: [
-          IconButton(onPressed: () => Navigator.push(context, _route(UserProfilePage(user: widget.user))), icon: const Icon(Icons.person)),
+          IconButton(
+            onPressed: () {
+              // fixed: use MaterialPageRoute to push UserProfilePage (avoid method resolution issues)
+              Navigator.push(context, MaterialPageRoute(builder: (_) => UserProfilePage(user: widget.user)));
+            },
+            icon: const Icon(Icons.person),
+          ),
           IconButton(onPressed: _logout, icon: const Icon(Icons.logout)),
         ],
       ),
@@ -574,11 +568,18 @@ class _UserHomePageState extends State<UserHomePage> with TickerProviderStateMix
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: ElevatedButton.icon(onPressed: () => Navigator.push(context, _route(DailyJournalPage(initialText: _journalCtrl.text))), icon: const Icon(Icons.note), label: const Text('Buka Jurnal'), style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)))),
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => DailyJournalPage(initialText: _journalCtrl.text, username: widget.user.username)));
+                              },
+                              icon: const Icon(Icons.note),
+                              label: const Text('Buka Jurnal'),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                            ),
                           ),
                         ]),
                         const SizedBox(height: 8),
-                        Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => Navigator.push(context, _route(UserCalendarPage(username: widget.user.username))), child: const Text('Lihat Kalender Riwayat'))),
+                        Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => UserCalendarPage(username: widget.user.username))), child: const Text('Lihat Kalender Riwayat'))),
                       ]),
                     ),
                   ),
@@ -641,9 +642,6 @@ class _UserHomePageState extends State<UserHomePage> with TickerProviderStateMix
 
   static Widget _blob(double size, Color color) => Container(width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [color, Colors.transparent])));
 
-  PageRouteBuilder _route(Widget page) {
-    return PageRouteBuilder(pageBuilder: (_, anim, __) => page, transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child), transitionDuration: const Duration(milliseconds: 360));
-  }
 }
 
 /* ===========================
@@ -770,8 +768,6 @@ class UserProfilePage extends StatelessWidget {
       ),
     );
   }
-
-  Widget _infoRow(String label, String value) => Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Row(children: [SizedBox(width: 110, child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w600))), Expanded(child: Text(value))]));
 }
 
 class UserCalendarPage extends StatelessWidget {
@@ -833,22 +829,344 @@ class UserCalendarPage extends StatelessWidget {
   }
 }
 
-class DailyJournalPage extends StatelessWidget {
+/* ===========================
+   Colorful Daily Journal (fixed Timer usage)
+   =========================== */
+
+class DailyJournalPage extends StatefulWidget {
   final String initialText;
-  const DailyJournalPage({super.key, this.initialText = ''});
+  final String? username; // optional -> if provided will save to InMemoryService
+  final int initialStress;
+  final int? initialMoodIndex;
+
+  const DailyJournalPage({
+    super.key,
+    this.initialText = '',
+    this.username,
+    this.initialStress = 5,
+    this.initialMoodIndex,
+  });
+
+  @override
+  State<DailyJournalPage> createState() => _DailyJournalPageState();
+}
+
+class _DailyJournalPageState extends State<DailyJournalPage> with TickerProviderStateMixin {
+  late TextEditingController _ctrl;
+  late AnimationController _bgController;
+  late AnimationController _floatController;
+  late AnimationController _saveAnimController;
+
+  int _stress = 5;
+  int? _selectedMood;
+  Color _paperColor = Colors.white;
+  bool _saving = false;
+  Timer? _autoSaveTimer;
+
+  final List<Map<String, dynamic>> _moods = [
+    {'name': 'Happy', 'icon': Icons.sentiment_very_satisfied, 'color': Colors.orange},
+    {'name': 'Calm', 'icon': Icons.self_improvement, 'color': Colors.teal},
+    {'name': 'Focused', 'icon': Icons.psychology, 'color': Colors.indigo},
+    {'name': 'Sad', 'icon': Icons.sentiment_dissatisfied, 'color': Colors.blueGrey},
+    {'name': 'Tired', 'icon': Icons.bedtime, 'color': Colors.amber},
+    {'name': 'Anxious', 'icon': Icons.sentiment_neutral, 'color': Colors.pinkAccent},
+    {'name': 'Excited', 'icon': Icons.flash_on, 'color': Colors.deepOrangeAccent},
+    {'name': 'Playful', 'icon': Icons.emoji_emotions, 'color': Colors.deepPurpleAccent},
+    {'name': 'Grateful', 'icon': Icons.favorite, 'color': Colors.redAccent},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.initialText);
+    _stress = widget.initialStress;
+    _selectedMood = widget.initialMoodIndex;
+
+    _bgController = AnimationController(vsync: this, duration: const Duration(seconds: 8))..repeat(reverse: true);
+    _floatController = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat(reverse: true);
+    _saveAnimController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+
+    // autosave draft every 20 seconds if username provided
+    if (widget.username != null) {
+      _autoSaveTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
+        // Guard: if mounted, perform autosave
+        if (!mounted) return;
+        _autoSaveDraft();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoSaveTimer?.cancel();
+    _ctrl.dispose();
+    _bgController.dispose();
+    _floatController.dispose();
+    _saveAnimController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _autoSaveDraft() async {
+    if (widget.username == null) return;
+    final text = _ctrl.text.trim();
+    if (text.isEmpty) return;
+    try {
+      InMemoryService.saveEntry(
+        JournalEntry(
+          username: widget.username!,
+          mood: _selectedMood != null ? _moods[_selectedMood!]['name'] as String : 'Draft',
+          stressLevel: _stress,
+          note: text + ' (draft)',
+          timestamp: DateTime.now(),
+        ),
+      );
+    } catch (_) {
+      // ignore if InMemoryService not available
+    }
+  }
+
+  Future<void> _onSave() async {
+    setState(() => _saving = true);
+    _saveAnimController.forward(from: 0);
+    final text = _ctrl.text.trim();
+
+    try {
+      if (widget.username != null) {
+        InMemoryService.saveEntry(
+          JournalEntry(
+            username: widget.username!,
+            mood: _selectedMood != null ? _moods[_selectedMood!]['name'] as String : 'Journal',
+            stressLevel: _stress,
+            note: text,
+            timestamp: DateTime.now(),
+          ),
+        );
+      }
+    } catch (_) {}
+
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+    setState(() => _saving = false);
+
+    if (mounted) {
+      Navigator.pop(context, {
+        'text': text,
+        'moodIndex': _selectedMood,
+        'stress': _stress,
+        'saved': true,
+      });
+    }
+  }
+
+  void _insertEmoji() {
+    const emojis = ['😊', '✨', '🙏', '😌', '💪', '🌈', '😂', '😴'];
+    final e = emojis[DateTime.now().millisecondsSinceEpoch % emojis.length];
+    final pos = _ctrl.selection.base.offset;
+    final content = _ctrl.text;
+    if (pos >= 0 && pos <= content.length) {
+      final updated = content.replaceRange(pos, pos, e);
+      _ctrl.text = updated;
+      _ctrl.selection = TextSelection.collapsed(offset: pos + e.length);
+    } else {
+      _ctrl.text = '$content $e';
+      _ctrl.selection = TextSelection.collapsed(offset: _ctrl.text.length);
+    }
+  }
+
+  void _pickPaperColor() {
+    final colors = [Colors.white, Colors.yellow.shade50, Colors.blue.shade50, Colors.pink.shade50];
+    final idx = colors.indexOf(_paperColor);
+    final next = (idx + 1) % colors.length;
+    setState(() => _paperColor = colors[next]);
+  }
+
+  LinearGradient _animatedBackground(double t) {
+    final a = Color.lerp(Colors.purple.shade100, Colors.indigo.shade50, (sin(t * 2 * pi) + 1) / 2)!;
+    final b = Color.lerp(Colors.orange.shade50, Colors.teal.shade50, (cos(t * 2 * pi) + 1) / 2)!;
+    return LinearGradient(
+      begin: Alignment(-0.8 + 0.6 * sin(t * 2 * pi), -1),
+      end: Alignment(1, 0.6 * cos(t * 2 * pi)),
+      colors: [a, b],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final ctrl = TextEditingController(text: initialText);
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width > 720;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Daily Journal'), backgroundColor: Colors.indigo),
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(children: [
-          Expanded(child: TextField(controller: ctrl, maxLines: null, expands: true, decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Tulis jurnal...'))),
-          const SizedBox(height: 8),
-          Row(children: [Expanded(child: ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Selesai')))])
-        ]),
+      appBar: AppBar(
+        title: const Text('Daily Journal'),
+        backgroundColor: Colors.indigo,
+        elevation: 0,
+      ),
+      body: AnimatedBuilder(
+        animation: Listenable.merge([_bgController, _floatController, _saveAnimController]),
+        builder: (context, _) {
+          final t = _bgController.value;
+          final float = sin(_floatController.value * 2 * pi) * 8;
+          final saveAnim = Curves.easeOut.transform(_saveAnimController.value);
+          return Container(
+            decoration: BoxDecoration(gradient: _animatedBackground(t)),
+            child: SafeArea(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: isWide ? 900 : double.infinity),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14.0),
+                    child: Column(
+                      children: [
+                        Transform.translate(
+                          offset: Offset(0, -float),
+                          child: Hero(
+                            tag: 'daily_journal_card',
+                            child: Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.96),
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 8, offset: const Offset(0, 6))],
+                                border: Border.all(color: Colors.white.withOpacity(0.6)),
+                              ),
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.indigo.shade50, borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.menu_book_rounded, color: Colors.indigo)),
+                                      const SizedBox(width: 12),
+                                      const Expanded(child: Text('Tuliskan harimu', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
+                                      if (_selectedMood != null) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          decoration: BoxDecoration(color: (_moods[_selectedMood!]['color'] as Color).withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+                                          child: Row(children: [
+                                            Icon(_moods[_selectedMood!]['icon'] as IconData, color: _moods[_selectedMood!]['color'] as Color, size: 18),
+                                            const SizedBox(width: 8),
+                                            Text(_moods[_selectedMood!]['name'] as String, style: TextStyle(color: _moods[_selectedMood!]['color'] as Color, fontWeight: FontWeight.w700)),
+                                          ]),
+                                        ),
+                                      ]
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    height: 44,
+                                    child: ListView.separated(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: _moods.length,
+                                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                      itemBuilder: (c, i) {
+                                        final m = _moods[i];
+                                        final active = _selectedMood == i;
+                                        return ChoiceChip(
+                                          selected: active,
+                                          onSelected: (_) => setState(() => _selectedMood = active ? null : i),
+                                          label: Row(children: [Icon(m['icon'] as IconData, size: 18, color: active ? Colors.white : m['color'] as Color), const SizedBox(width: 8), Text(m['name'] as String)]),
+                                          selectedColor: (m['color'] as Color).withOpacity(0.95),
+                                          backgroundColor: Colors.grey.shade100,
+                                          labelStyle: TextStyle(color: active ? Colors.white : Colors.black87, fontWeight: FontWeight.w600),
+                                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        Expanded(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 360),
+                            curve: Curves.easeOut,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: _paperColor,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    IconButton(onPressed: _insertEmoji, icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.deepOrange)),
+                                    IconButton(onPressed: _pickPaperColor, icon: const Icon(Icons.format_color_fill, color: Colors.teal)),
+                                    IconButton(onPressed: () => _ctrl.clear(), icon: const Icon(Icons.clear, color: Colors.grey)),
+                                    const Spacer(),
+                                    AnimatedScale(scale: 1.0 + 0.05 * saveAnim, duration: const Duration(milliseconds: 200), child: Text('${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}', style: TextStyle(color: Colors.grey.shade800, fontWeight: FontWeight.w600))),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Expanded(
+                                  child: Container(
+                                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade200)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    child: TextField(
+                                      controller: _ctrl,
+                                      expands: true,
+                                      maxLines: null,
+                                      style: const TextStyle(fontSize: 16, height: 1.4),
+                                      decoration: const InputDecoration.collapsed(hintText: 'Tulis jurnal... (ceritakan perasaanmu, tiga hal yang disyukuri, rencana besok)'),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+
+                                Row(
+                                  children: [
+                                    const Icon(Icons.thermostat, color: Colors.deepOrange),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                        Text('Tingkat stres: $_stress / 10', style: const TextStyle(fontWeight: FontWeight.w600)),
+                                        Slider(value: _stress.toDouble(), min: 0, max: 10, divisions: 10, activeColor: Colors.deepOrange, onChanged: (v) => setState(() => _stress = v.round())),
+                                      ]),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text('${_ctrl.text.length} chars', style: TextStyle(color: Colors.grey.shade700)),
+                                  ],
+                                ),
+
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed: _saving ? null : _onSave,
+                                        icon: _saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.save),
+                                        label: Text(_saving ? 'Menyimpan...' : 'Simpan & Tutup'),
+                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: _saving ? null : () => Navigator.pop(context),
+                                        icon: const Icon(Icons.cancel_outlined),
+                                        label: const Text('Batal'),
+                                        style: OutlinedButton.styleFrom(foregroundColor: Colors.indigo, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -897,7 +1215,7 @@ class DosenHomePage extends StatelessWidget {
                             subtitle: Text('${u.major} • ${u.age} tahun • entri: $count'),
                             trailing: IconButton(
                               icon: const Icon(Icons.visibility),
-                              onPressed: () => Navigator.push(context, _route(DosenViewUserProfileWithHistory(user: u))),
+                              onPressed: () => Navigator.push(context, PageRouteBuilder(pageBuilder: (_, anim, __) => FadeTransition(opacity: anim, child: DosenViewUserProfileWithHistory(user: u)), transitionDuration: const Duration(milliseconds: 380))),
                             ),
                           ),
                         );
@@ -907,10 +1225,6 @@ class DosenHomePage extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  PageRouteBuilder _route(Widget page) {
-    return PageRouteBuilder(pageBuilder: (_, anim, __) => page, transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child), transitionDuration: const Duration(milliseconds: 380));
   }
 }
 
@@ -954,9 +1268,5 @@ class DosenViewUserProfileWithHistory extends StatelessWidget {
 /* ===========================
    Utilities
    =========================== */
-
-PageRouteBuilder _route(Widget page) {
-  return PageRouteBuilder(pageBuilder: (_, anim, __) => page, transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child), transitionDuration: const Duration(milliseconds: 380));
-}
 
 Widget _infoRow(String label, String value) => Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Row(children: [SizedBox(width: 110, child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w600))), Expanded(child: Text(value))]));
