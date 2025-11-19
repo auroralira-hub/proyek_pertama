@@ -1,11 +1,13 @@
-// Full single-file Flutter app (fixed).
-// Replace your project's main.dart with this file.
-// Fixes: Timer import/management, replaced some _route(...) calls that caused "method not found"
-// errors by using MaterialPageRoute; removed unused top-level _route; preserved animations & UI.
+// ========================================
+// MAIN.DART LENGKAP DENGAN AFFIRMATIONS API
+// Copy SEMUA code ini ke lib/main.dart Anda
+// ========================================
 
 import 'dart:async';
 import 'dart:math';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 void main() => runApp(const MoodTrackerApp());
 
@@ -85,6 +87,63 @@ class InMemoryService {
     final list = _entries.putIfAbsent(e.username, () => []);
     list.add(e);
     list.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+  }
+}
+
+/* ===========================
+   🌟 AFFIRMATIONS SERVICE - DENGAN FALLBACK!
+   =========================== */
+
+class AffirmationsService {
+  static const String _apiUrl = 'https://www.affirmations.dev/';
+  
+  // Daftar affirmations offline sebagai fallback
+  static final List<String> _offlineAffirmations = [
+    'You are capable of amazing things! ✨',
+    'Your potential is limitless! 🌟',
+    'Every day is a fresh start! 🌅',
+    'You are stronger than you think! 💪',
+    'Believe in yourself and magic will happen! ✨',
+    'Your positive energy is contagious! 😊',
+    'You are worthy of all good things! 🎁',
+    'Today is full of possibilities! 🌈',
+    'You make a difference in the world! 🌍',
+    'Your dreams are within reach! 🎯',
+    'You are braver than you believe! 🦁',
+    'Keep going, you\'re doing great! 🚀',
+    'You deserve happiness and success! 🌟',
+    'Your smile can change someone\'s day! 😄',
+    'You are enough, just as you are! 💖',
+    'Progress, not perfection! 📈',
+    'You have the power to create change! ⚡',
+    'Your kindness makes the world better! 🌸',
+    'Embrace your unique journey! 🛤️',
+    'You are loved and appreciated! 💝'
+  ];
+  
+  static Future<String> fetchAffirmation() async {
+    try {
+      print('🔄 Trying to fetch affirmation from API...');
+      final response = await http.get(Uri.parse(_apiUrl)).timeout(const Duration(seconds: 5));
+      print('📡 Response status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final affirmation = data['affirmation'] as String?;
+        if (affirmation != null && affirmation.isNotEmpty) {
+          print('✅ Affirmation received from API: $affirmation');
+          return affirmation;
+        }
+      }
+    } catch (e) {
+      print('⚠️ API failed, using offline affirmations: $e');
+    }
+    
+    // Fallback ke offline affirmations
+    final random = Random();
+    final affirmation = _offlineAffirmations[random.nextInt(_offlineAffirmations.length)];
+    print('💾 Using offline affirmation: $affirmation');
+    return affirmation;
   }
 }
 
@@ -375,7 +434,208 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
 }
 
 /* ===========================
-   User Home (colorful + animated)
+   🌟 AFFIRMATIONS WIDGET - BARU!
+   =========================== */
+
+class AffirmationsWidget extends StatefulWidget {
+  const AffirmationsWidget({super.key});
+
+  @override
+  State<AffirmationsWidget> createState() => _AffirmationsWidgetState();
+}
+
+class _AffirmationsWidgetState extends State<AffirmationsWidget> with SingleTickerProviderStateMixin {
+  String _affirmation = 'Loading inspiration...';
+  bool _isLoading = true;
+  late AnimationController _shimmerController;
+  
+  final List<IconData> _icons = [
+    Icons.favorite,
+    Icons.star,
+    Icons.emoji_emotions,
+    Icons.wb_sunny,
+    Icons.auto_awesome,
+    Icons.celebration,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    print('🎯 AffirmationsWidget INITIALIZED!');
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+    _fetchAffirmation();
+  }
+
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchAffirmation() async {
+    print('🔍 Starting to fetch affirmation...');
+    setState(() => _isLoading = true);
+    
+    final affirmation = await AffirmationsService.fetchAffirmation();
+    
+    print('📝 Got affirmation: $affirmation');
+    
+    if (mounted) {
+      setState(() {
+        _affirmation = affirmation;
+        _isLoading = false;
+      });
+      print('✅ Widget updated with affirmation!');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    print('🎨 Building AffirmationsWidget...');
+    final randomIcon = _icons[DateTime.now().millisecond % _icons.length];
+    
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 600),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.purple.shade400,
+            Colors.deepPurple.shade500,
+            Colors.indigo.shade600,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.deepPurple.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  randomIcon,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  '✨ Daily Affirmation',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: _fetchAffirmation,
+                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                tooltip: 'Get new affirmation',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_isLoading)
+            AnimatedBuilder(
+              animation: _shimmerController,
+              builder: (context, child) {
+                return Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.1),
+                        Colors.white.withOpacity(0.3),
+                        Colors.white.withOpacity(0.1),
+                      ],
+                      stops: [
+                        _shimmerController.value - 0.3,
+                        _shimmerController.value,
+                        _shimmerController.value + 0.3,
+                      ],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                  ),
+                );
+              },
+            )
+          else
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              child: Container(
+                key: ValueKey(_affirmation),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Text(
+                  _affirmation,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    height: 1.5,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.auto_awesome,
+                color: Colors.white.withOpacity(0.7),
+                size: 14,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Tap refresh for new inspiration',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withOpacity(0.8),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/* ===========================
+   🏠 USER HOME (with AFFIRMATIONS!)
    =========================== */
 
 class UserHomePage extends StatefulWidget {
@@ -413,6 +673,7 @@ class _UserHomePageState extends State<UserHomePage> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
+    print('🏠 UserHomePage initialized for ${widget.user.username}');
     _mistController = AnimationController(vsync: this, duration: const Duration(seconds: 9))..repeat(reverse: true);
     _entranceController = AnimationController(vsync: this, duration: const Duration(milliseconds: 700))..forward();
   }
@@ -459,9 +720,11 @@ class _UserHomePageState extends State<UserHomePage> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    print('🎨 Building UserHomePage...');
     final entries = InMemoryService.entriesFor(widget.user.username);
     final width = MediaQuery.of(context).size.width;
     final isWide = width > 740;
+    
     return Scaffold(
       appBar: AppBar(
         title: Text('Home - ${widget.user.name}'),
@@ -469,7 +732,6 @@ class _UserHomePageState extends State<UserHomePage> with TickerProviderStateMix
         actions: [
           IconButton(
             onPressed: () {
-              // fixed: use MaterialPageRoute to push UserProfilePage (avoid method resolution issues)
               Navigator.push(context, MaterialPageRoute(builder: (_) => UserProfilePage(user: widget.user)));
             },
             icon: const Icon(Icons.person),
@@ -479,14 +741,20 @@ class _UserHomePageState extends State<UserHomePage> with TickerProviderStateMix
       ),
       body: Stack(
         children: [
-          // animated blobs background
+          // Background dengan animated blobs
           AnimatedBuilder(
             animation: _mistController,
             builder: (context, _) {
               final move = sin(_mistController.value * 2 * pi) * 40;
               return Positioned.fill(
                 child: Container(
-                  decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFF7FAFF), Color(0xFFFFFBF6)], begin: Alignment.topLeft, end: Alignment.bottomRight)),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFFF7FAFF), Color(0xFFFFFBF6)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight
+                    )
+                  ),
                   child: Stack(children: [
                     Positioned(top: 40 + move, left: 20 - move, child: _blob(170, Colors.purple.withOpacity(0.12))),
                     Positioned(bottom: 80 - move, right: 30 + move, child: _blob(220, Colors.teal.withOpacity(0.12))),
@@ -496,139 +764,272 @@ class _UserHomePageState extends State<UserHomePage> with TickerProviderStateMix
             },
           ),
 
+          // Main content
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Column(children: [
-                ScaleTransition(
-                  scale: CurvedAnimation(parent: _entranceController, curve: Curves.easeOutBack),
-                  child: Card(
-                    elevation: 10,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14.0),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                        Row(children: [
-                          const Icon(Icons.emoji_people, color: Colors.indigo),
-                          const SizedBox(width: 8),
-                          const Text('Catat Mood & Stress', style: TextStyle(fontWeight: FontWeight.w800)),
-                          const Spacer(),
-                          ElevatedButton.icon(onPressed: _pickDate, icon: const Icon(Icons.calendar_today, size: 16), label: Text('${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'), style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10))),
-                        ]),
-                        const SizedBox(height: 12),
+              child: Column(
+                children: [
+                  // 🌟🌟🌟 AFFIRMATIONS WIDGET - INI YANG BARU! 🌟🌟🌟
+                  ScaleTransition(
+                    scale: CurvedAnimation(parent: _entranceController, curve: Curves.easeOutBack),
+                    child: const AffirmationsWidget(),
+                  ),
 
-                        // mood preview grid (tap to open gallery)
-                        LayoutBuilder(builder: (context, constraints) {
-                          final cross = isWide ? 3 : 2;
-                          return SizedBox(
-                            height: isWide ? 220 : 240,
-                            child: GridView.builder(
-                              itemCount: min(6, moods.length),
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: cross, childAspectRatio: 3.2, crossAxisSpacing: 12, mainAxisSpacing: 12),
-                              itemBuilder: (c, i) {
-                                final m = moods[i];
-                                final active = selectedMoodIndex == i;
-                                return GestureDetector(
-                                  onTap: () => _openMoodGallery(initialIndex: i),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 360),
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(active ? 18 : 12),
-                                      gradient: active ? LinearGradient(colors: [m['color'] as Color, (m['color'] as Color).withOpacity(0.9)]) : LinearGradient(colors: [(m['color'] as Color).withOpacity(0.12), Colors.white]),
-                                      boxShadow: [if (active) BoxShadow(color: (m['color'] as Color).withOpacity(0.22), blurRadius: 12, offset: const Offset(0, 8))],
-                                      border: Border.all(color: Colors.white.withOpacity(0.6)),
-                                    ),
-                                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                      Icon(m['icon'] as IconData, color: active ? Colors.white : (m['color'] as Color), size: active ? 30 : 24),
-                                      const SizedBox(width: 10),
-                                      Text(m['name'] as String, style: TextStyle(color: active ? Colors.white : Colors.black87, fontWeight: FontWeight.w700)),
-                                    ]),
+                  const SizedBox(height: 16),
+
+                  // Card Catat Mood & Stress
+                  ScaleTransition(
+                    scale: CurvedAnimation(parent: _entranceController, curve: Curves.easeOutBack),
+                    child: Card(
+                      elevation: 10,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(children: [
+                              const Icon(Icons.emoji_people, color: Colors.indigo),
+                              const SizedBox(width: 8),
+                              const Text('Catat Mood & Stress', style: TextStyle(fontWeight: FontWeight.w800)),
+                              const Spacer(),
+                              ElevatedButton.icon(
+                                onPressed: _pickDate,
+                                icon: const Icon(Icons.calendar_today, size: 16),
+                                label: Text('${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.indigo,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10)
+                                )
+                              ),
+                            ]),
+                            const SizedBox(height: 12),
+
+                            // Mood grid preview
+                            LayoutBuilder(builder: (context, constraints) {
+                              final cross = isWide ? 3 : 2;
+                              return SizedBox(
+                                height: isWide ? 220 : 240,
+                                child: GridView.builder(
+                                  itemCount: min(6, moods.length),
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: cross,
+                                    childAspectRatio: 3.2,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12
                                   ),
-                                );
-                              },
+                                  itemBuilder: (c, i) {
+                                    final m = moods[i];
+                                    final active = selectedMoodIndex == i;
+                                    return GestureDetector(
+                                      onTap: () => _openMoodGallery(initialIndex: i),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 360),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(active ? 18 : 12),
+                                          gradient: active
+                                              ? LinearGradient(colors: [m['color'] as Color, (m['color'] as Color).withOpacity(0.9)])
+                                              : LinearGradient(colors: [(m['color'] as Color).withOpacity(0.12), Colors.white]),
+                                          boxShadow: [
+                                            if (active)
+                                              BoxShadow(
+                                                color: (m['color'] as Color).withOpacity(0.22),
+                                                blurRadius: 12,
+                                                offset: const Offset(0, 8)
+                                              )
+                                          ],
+                                          border: Border.all(color: Colors.white.withOpacity(0.6)),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              m['icon'] as IconData,
+                                              color: active ? Colors.white : (m['color'] as Color),
+                                              size: active ? 30 : 24
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              m['name'] as String,
+                                              style: TextStyle(
+                                                color: active ? Colors.white : Colors.black87,
+                                                fontWeight: FontWeight.w700
+                                              )
+                                            ),
+                                          ]
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            }),
+
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: () => _openMoodGallery(initialIndex: 0),
+                                icon: const Icon(Icons.grid_view),
+                                label: const Text('Lihat Semua Mood')
+                              )
                             ),
-                          );
-                        }),
 
-                        const SizedBox(height: 8),
-                        Align(alignment: Alignment.centerRight, child: TextButton.icon(onPressed: () => _openMoodGallery(initialIndex: 0), icon: const Icon(Icons.grid_view), label: const Text('Lihat Semua Mood'))),
-
-                        const SizedBox(height: 6),
-                        Text('Stress level: $stressValue', style: const TextStyle(fontWeight: FontWeight.w600)),
-                        Slider(value: stressValue.toDouble(), min: 0, max: 10, divisions: 10, label: stressValue.toString(), onChanged: (v) => setState(() => stressValue = v.round())),
-                        const SizedBox(height: 8),
-                        TextField(controller: _journalCtrl, maxLines: 4, decoration: InputDecoration(hintText: 'Tulis catatan harian singkat...', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
-                        const SizedBox(height: 12),
-
-                        Row(children: [
-                          Expanded(
-                            child: ElevatedButton.icon(onPressed: _saveEntry, icon: const Icon(Icons.save), label: const Text('Simpan ke Kalender'), style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)))),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (_) => DailyJournalPage(initialText: _journalCtrl.text, username: widget.user.username)));
-                              },
-                              icon: const Icon(Icons.note),
-                              label: const Text('Buka Jurnal'),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                            const SizedBox(height: 6),
+                            Text('Stress level: $stressValue', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            Slider(
+                              value: stressValue.toDouble(),
+                              min: 0,
+                              max: 10,
+                              divisions: 10,
+                              label: stressValue.toString(),
+                              onChanged: (v) => setState(() => stressValue = v.round())
                             ),
-                          ),
-                        ]),
-                        const SizedBox(height: 8),
-                        Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => UserCalendarPage(username: widget.user.username))), child: const Text('Lihat Kalender Riwayat'))),
-                      ]),
+                            
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _journalCtrl,
+                              maxLines: 4,
+                              decoration: InputDecoration(
+                                hintText: 'Tulis catatan harian singkat...',
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))
+                              )
+                            ),
+                            
+                            const SizedBox(height: 12),
+                            Row(children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: _saveEntry,
+                                  icon: const Icon(Icons.save),
+                                  label: const Text('Simpan ke Kalender'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.teal,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                                  )
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => DailyJournalPage(
+                                          initialText: _journalCtrl.text,
+                                          username: widget.user.username
+                                        )
+                                      )
+                                    );
+                                  },
+                                  icon: const Icon(Icons.note),
+                                  label: const Text('Buka Jurnal'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.indigo,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                                  )
+                                ),
+                              ),
+                            ]),
+                            
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => UserCalendarPage(username: widget.user.username))
+                                ),
+                                child: const Text('Lihat Kalender Riwayat')
+                              )
+                            ),
+                          ]
+                        ),
+                      ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-                Card(
-                  elevation: 6,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Text('Ringkasan Terbaru', style: TextStyle(fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 8),
-                      if (entries.isEmpty)
-                        Padding(padding: const EdgeInsets.symmetric(vertical: 18.0), child: Text('Kosong - belum ada entri', style: TextStyle(color: Colors.grey.shade700)))
-                      else ...[
-                        Text('${entries.last.mood} • Stress ${entries.last.stressLevel}/10', style: const TextStyle(fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 6),
-                        Text(entries.last.note.isEmpty ? '(tidak ada catatan)' : entries.last.note),
-                        const SizedBox(height: 8),
-                        const Divider(),
-                        const Text('Riwayat singkat (terakhir 5 entri):', style: TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 220),
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            itemCount: min(5, entries.length),
-                            separatorBuilder: (_, __) => const Divider(),
-                            itemBuilder: (c, i) {
-                              final e = entries.reversed.toList()[i];
-                              return ListTile(
-                                leading: CircleAvatar(child: Text(e.mood.isNotEmpty ? e.mood[0] : 'M')),
-                                title: Text('${e.mood} • Stress ${e.stressLevel}/10'),
-                                subtitle: Text(e.note.isEmpty ? '(tidak ada catatan)' : e.note, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                trailing: Text('${e.timestamp.day}/${e.timestamp.month}'),
-                                onTap: () => showDialog(context: context, builder: (_) => AlertDialog(title: Text('${e.mood}'), content: Text('${e.note}\n\n${e.timestamp}'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup'))])),
-                              );
-                            },
-                          ),
-                        )
-                      ],
-                    ]),
+                  // Ringkasan
+                  Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Ringkasan Terbaru', style: TextStyle(fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 8),
+                          if (entries.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 18.0),
+                              child: Text('Kosong - belum ada entri', style: TextStyle(color: Colors.grey.shade700))
+                            )
+                          else ...[
+                            Text(
+                              '${entries.last.mood} • Stress ${entries.last.stressLevel}/10',
+                              style: const TextStyle(fontWeight: FontWeight.w700)
+                            ),
+                            const SizedBox(height: 6),
+                            Text(entries.last.note.isEmpty ? '(tidak ada catatan)' : entries.last.note),
+                            const SizedBox(height: 8),
+                            const Divider(),
+                            const Text('Riwayat singkat (terakhir 5 entri):', style: TextStyle(fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 8),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 220),
+                              child: ListView.separated(
+                                shrinkWrap: true,
+                                itemCount: min(5, entries.length),
+                                separatorBuilder: (_, __) => const Divider(),
+                                itemBuilder: (c, i) {
+                                  final e = entries.reversed.toList()[i];
+                                  return ListTile(
+                                    leading: CircleAvatar(child: Text(e.mood.isNotEmpty ? e.mood[0] : 'M')),
+                                    title: Text('${e.mood} • Stress ${e.stressLevel}/10'),
+                                    subtitle: Text(
+                                      e.note.isEmpty ? '(tidak ada catatan)' : e.note,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis
+                                    ),
+                                    trailing: Text('${e.timestamp.day}/${e.timestamp.month}'),
+                                    onTap: () => showDialog(
+                                      context: context,
+                                      builder: (_) => AlertDialog(
+                                        title: Text('${e.mood}'),
+                                        content: Text('${e.note}\n\n${e.timestamp}'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context),
+                                            child: const Text('Tutup')
+                                          )
+                                        ]
+                                      )
+                                    ),
+                                  );
+                                },
+                              ),
+                            )
+                          ],
+                        ]
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-              ]),
+                  const SizedBox(height: 20),
+                ]
+              ),
             ),
           ),
         ],
@@ -637,15 +1038,28 @@ class _UserHomePageState extends State<UserHomePage> with TickerProviderStateMix
   }
 
   void _logout() {
-    Navigator.pushAndRemoveUntil(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const LoginPage(), transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c)), (r) => false);
+    Navigator.pushAndRemoveUntil(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const LoginPage(),
+        transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c)
+      ),
+      (r) => false
+    );
   }
 
-  static Widget _blob(double size, Color color) => Container(width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [color, Colors.transparent])));
-
+  static Widget _blob(double size, Color color) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: RadialGradient(colors: [color, Colors.transparent])
+    )
+  );
 }
 
 /* ===========================
-   Mood Gallery (full-screen)
+   Mood Gallery
    =========================== */
 
 class MoodGalleryPage extends StatefulWidget {
@@ -685,22 +1099,36 @@ class _MoodGalleryPageState extends State<MoodGalleryPage> with TickerProviderSt
     final cross = width < 600 ? 2 : width < 900 ? 3 : 4;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pilih Mood'), backgroundColor: Colors.indigo, actions: [IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context))]),
+      appBar: AppBar(
+        title: const Text('Pilih Mood'),
+        backgroundColor: Colors.indigo,
+        actions: [IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context))]
+      ),
       body: AnimatedBuilder(
         animation: _floatController,
         builder: (context, _) {
           final lift = sin(_floatController.value * 2 * pi) * 6;
           return Container(
-            decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFF3F8FF), Color(0xFFFFF8F4)])),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(colors: [Color(0xFFF3F8FF), Color(0xFFFFF8F4)])
+            ),
             child: Padding(
               padding: const EdgeInsets.all(12.0),
               child: GridView.builder(
                 itemCount: widget.moods.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: cross, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 1.6),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cross,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.6
+                ),
                 itemBuilder: (c, i) {
                   final m = widget.moods[i];
                   final active = selected == i;
-                  final anim = CurvedAnimation(parent: _stagger, curve: Interval((i / widget.moods.length).clamp(0.0, 1.0), 1.0, curve: Curves.easeOut));
+                  final anim = CurvedAnimation(
+                    parent: _stagger,
+                    curve: Interval((i / widget.moods.length).clamp(0.0, 1.0), 1.0, curve: Curves.easeOut)
+                  );
                   return FadeTransition(
                     opacity: anim,
                     child: Transform.translate(
@@ -715,15 +1143,37 @@ class _MoodGalleryPageState extends State<MoodGalleryPage> with TickerProviderSt
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(active ? 18 : 12),
-                            gradient: active ? LinearGradient(colors: [m['color'] as Color, (m['color'] as Color).withOpacity(0.9)]) : LinearGradient(colors: [(m['color'] as Color).withOpacity(0.1), Colors.white]),
-                            boxShadow: [BoxShadow(color: (m['color'] as Color).withOpacity(active ? 0.2 : 0.06), blurRadius: active ? 14 : 6, offset: const Offset(0, 6))],
+                            gradient: active
+                                ? LinearGradient(colors: [m['color'] as Color, (m['color'] as Color).withOpacity(0.9)])
+                                : LinearGradient(colors: [(m['color'] as Color).withOpacity(0.1), Colors.white]),
+                            boxShadow: [
+                              BoxShadow(
+                                color: (m['color'] as Color).withOpacity(active ? 0.2 : 0.06),
+                                blurRadius: active ? 14 : 6,
+                                offset: const Offset(0, 6)
+                              )
+                            ],
                             border: Border.all(color: Colors.white.withOpacity(0.6)),
                           ),
-                          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Icon(m['icon'] as IconData, size: active ? 34 : 28, color: active ? Colors.white : (m['color'] as Color)),
-                            const SizedBox(width: 12),
-                            Text(m['name'] as String, style: TextStyle(fontSize: active ? 16 : 14, fontWeight: FontWeight.w800, color: active ? Colors.white : Colors.black87)),
-                          ]),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                m['icon'] as IconData,
+                                size: active ? 34 : 28,
+                                color: active ? Colors.white : (m['color'] as Color)
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                m['name'] as String,
+                                style: TextStyle(
+                                  fontSize: active ? 16 : 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: active ? Colors.white : Colors.black87
+                                )
+                              ),
+                            ]
+                          ),
                         ),
                       ),
                     ),
@@ -753,17 +1203,31 @@ class UserProfilePage extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(children: [
-          Hero(tag: 'app-logo', child: CircleAvatar(radius: 46, child: Text(user.name.isNotEmpty ? user.name[0] : 'U', style: const TextStyle(fontSize: 36)))),
+          Hero(
+            tag: 'app-logo',
+            child: CircleAvatar(
+              radius: 46,
+              child: Text(
+                user.name.isNotEmpty ? user.name[0] : 'U',
+                style: const TextStyle(fontSize: 36)
+              )
+            )
+          ),
           const SizedBox(height: 12),
           Text(user.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Card(child: Padding(padding: const EdgeInsets.all(12.0), child: Column(children: [
-            _infoRow('Username', user.username),
-            _infoRow('Nama', user.name),
-            _infoRow('Usia', '${user.age}'),
-            _infoRow('Jurusan', user.major),
-            _infoRow('Email', user.email),
-          ]))),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(children: [
+                _infoRow('Username', user.username),
+                _infoRow('Nama', user.name),
+                _infoRow('Usia', '${user.age}'),
+                _infoRow('Jurusan', user.major),
+                _infoRow('Email', user.email),
+              ])
+            )
+          ),
         ]),
       ),
     );
@@ -801,7 +1265,11 @@ class UserCalendarPage extends StatelessWidget {
           Expanded(
             child: GridView.builder(
               itemCount: days.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 7, crossAxisSpacing: 6, mainAxisSpacing: 6),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                crossAxisSpacing: 6,
+                mainAxisSpacing: 6
+              ),
               itemBuilder: (c, i) {
                 final d = days[i];
                 final key = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -810,14 +1278,42 @@ class UserCalendarPage extends StatelessWidget {
                 return GestureDetector(
                   onTap: has
                       ? () {
-                          showModalBottomSheet(context: context, builder: (_) {
-                            return ListView(padding: const EdgeInsets.all(12), children: entries.map((e) => ListTile(leading: CircleAvatar(child: Text(e.mood.isNotEmpty ? e.mood[0] : 'M')), title: Text('${e.mood} • Stress ${e.stressLevel}/10'), subtitle: Text(e.note.isEmpty ? '(tidak ada catatan)' : e.note))).toList());
-                          });
+                          showModalBottomSheet(
+                            context: context,
+                            builder: (_) {
+                              return ListView(
+                                padding: const EdgeInsets.all(12),
+                                children: entries.map((e) => ListTile(
+                                  leading: CircleAvatar(child: Text(e.mood.isNotEmpty ? e.mood[0] : 'M')),
+                                  title: Text('${e.mood} • Stress ${e.stressLevel}/10'),
+                                  subtitle: Text(e.note.isEmpty ? '(tidak ada catatan)' : e.note)
+                                )).toList()
+                              );
+                            }
+                          );
                         }
                       : null,
                   child: Container(
-                    decoration: BoxDecoration(color: has ? Colors.teal.withOpacity(0.9) : Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
-                    child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text('${d.day}', style: TextStyle(color: has ? Colors.white : Colors.black87, fontWeight: FontWeight.bold)), if (has) const SizedBox(height: 6), if (has) const Icon(Icons.circle, size: 8, color: Colors.white)])),
+                    decoration: BoxDecoration(
+                      color: has ? Colors.teal.withOpacity(0.9) : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(8)
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${d.day}',
+                            style: TextStyle(
+                              color: has ? Colors.white : Colors.black87,
+                              fontWeight: FontWeight.bold
+                            )
+                          ),
+                          if (has) const SizedBox(height: 6),
+                          if (has) const Icon(Icons.circle, size: 8, color: Colors.white)
+                        ]
+                      )
+                    ),
                   ),
                 );
               },
@@ -830,12 +1326,12 @@ class UserCalendarPage extends StatelessWidget {
 }
 
 /* ===========================
-   Colorful Daily Journal (fixed Timer usage)
+   Daily Journal
    =========================== */
 
 class DailyJournalPage extends StatefulWidget {
   final String initialText;
-  final String? username; // optional -> if provided will save to InMemoryService
+  final String? username;
   final int initialStress;
   final int? initialMoodIndex;
 
@@ -886,10 +1382,8 @@ class _DailyJournalPageState extends State<DailyJournalPage> with TickerProvider
     _floatController = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat(reverse: true);
     _saveAnimController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
 
-    // autosave draft every 20 seconds if username provided
     if (widget.username != null) {
       _autoSaveTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
-        // Guard: if mounted, perform autosave
         if (!mounted) return;
         _autoSaveDraft();
       });
@@ -920,9 +1414,7 @@ class _DailyJournalPageState extends State<DailyJournalPage> with TickerProvider
           timestamp: DateTime.now(),
         ),
       );
-    } catch (_) {
-      // ignore if InMemoryService not available
-    }
+    } catch (_) {}
   }
 
   Future<void> _onSave() async {
@@ -1006,7 +1498,6 @@ class _DailyJournalPageState extends State<DailyJournalPage> with TickerProvider
         builder: (context, _) {
           final t = _bgController.value;
           final float = sin(_floatController.value * 2 * pi) * 8;
-          final saveAnim = Curves.easeOut.transform(_saveAnimController.value);
           return Container(
             decoration: BoxDecoration(gradient: _animatedBackground(t)),
             child: SafeArea(
@@ -1019,63 +1510,96 @@ class _DailyJournalPageState extends State<DailyJournalPage> with TickerProvider
                       children: [
                         Transform.translate(
                           offset: Offset(0, -float),
-                          child: Hero(
-                            tag: 'daily_journal_card',
-                            child: Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.96),
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 8, offset: const Offset(0, 6))],
-                                border: Border.all(color: Colors.white.withOpacity(0.6)),
-                              ),
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.indigo.shade50, borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.menu_book_rounded, color: Colors.indigo)),
-                                      const SizedBox(width: 12),
-                                      const Expanded(child: Text('Tuliskan harimu', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
-                                      if (_selectedMood != null) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                          decoration: BoxDecoration(color: (_moods[_selectedMood!]['color'] as Color).withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
-                                          child: Row(children: [
-                                            Icon(_moods[_selectedMood!]['icon'] as IconData, color: _moods[_selectedMood!]['color'] as Color, size: 18),
-                                            const SizedBox(width: 8),
-                                            Text(_moods[_selectedMood!]['name'] as String, style: TextStyle(color: _moods[_selectedMood!]['color'] as Color, fontWeight: FontWeight.w700)),
-                                          ]),
-                                        ),
-                                      ]
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    height: 44,
-                                    child: ListView.separated(
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: _moods.length,
-                                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                                      itemBuilder: (c, i) {
-                                        final m = _moods[i];
-                                        final active = _selectedMood == i;
-                                        return ChoiceChip(
-                                          selected: active,
-                                          onSelected: (_) => setState(() => _selectedMood = active ? null : i),
-                                          label: Row(children: [Icon(m['icon'] as IconData, size: 18, color: active ? Colors.white : m['color'] as Color), const SizedBox(width: 8), Text(m['name'] as String)]),
-                                          selectedColor: (m['color'] as Color).withOpacity(0.95),
-                                          backgroundColor: Colors.grey.shade100,
-                                          labelStyle: TextStyle(color: active ? Colors.white : Colors.black87, fontWeight: FontWeight.w600),
-                                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                                        );
-                                      },
+                          child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.96),
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 8, offset: const Offset(0, 6))],
+                              border: Border.all(color: Colors.white.withOpacity(0.6)),
+                            ),
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.indigo.shade50,
+                                        borderRadius: BorderRadius.circular(10)
+                                      ),
+                                      child: const Icon(Icons.menu_book_rounded, color: Colors.indigo)
                                     ),
+                                    const SizedBox(width: 12),
+                                    const Expanded(
+                                      child: Text(
+                                        'Tuliskan harimu',
+                                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)
+                                      )
+                                    ),
+                                    if (_selectedMood != null) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: (_moods[_selectedMood!]['color'] as Color).withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(20)
+                                        ),
+                                        child: Row(children: [
+                                          Icon(
+                                            _moods[_selectedMood!]['icon'] as IconData,
+                                            color: _moods[_selectedMood!]['color'] as Color,
+                                            size: 18
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            _moods[_selectedMood!]['name'] as String,
+                                            style: TextStyle(
+                                              color: _moods[_selectedMood!]['color'] as Color,
+                                              fontWeight: FontWeight.w700
+                                            )
+                                          ),
+                                        ]),
+                                      ),
+                                    ]
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  height: 44,
+                                  child: ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: _moods.length,
+                                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                    itemBuilder: (c, i) {
+                                      final m = _moods[i];
+                                      final active = _selectedMood == i;
+                                      return ChoiceChip(
+                                        selected: active,
+                                        onSelected: (_) => setState(() => _selectedMood = active ? null : i),
+                                        label: Row(children: [
+                                          Icon(
+                                            m['icon'] as IconData,
+                                            size: 18,
+                                            color: active ? Colors.white : m['color'] as Color
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(m['name'] as String)
+                                        ]),
+                                        selectedColor: (m['color'] as Color).withOpacity(0.95),
+                                        backgroundColor: Colors.grey.shade100,
+                                        labelStyle: TextStyle(
+                                          color: active ? Colors.white : Colors.black87,
+                                          fontWeight: FontWeight.w600
+                                        ),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      );
+                                    },
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -1096,24 +1620,45 @@ class _DailyJournalPageState extends State<DailyJournalPage> with TickerProvider
                               children: [
                                 Row(
                                   children: [
-                                    IconButton(onPressed: _insertEmoji, icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.deepOrange)),
-                                    IconButton(onPressed: _pickPaperColor, icon: const Icon(Icons.format_color_fill, color: Colors.teal)),
-                                    IconButton(onPressed: () => _ctrl.clear(), icon: const Icon(Icons.clear, color: Colors.grey)),
+                                    IconButton(
+                                      onPressed: _insertEmoji,
+                                      icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.deepOrange)
+                                    ),
+                                    IconButton(
+                                      onPressed: _pickPaperColor,
+                                      icon: const Icon(Icons.format_color_fill, color: Colors.teal)
+                                    ),
+                                    IconButton(
+                                      onPressed: () => _ctrl.clear(),
+                                      icon: const Icon(Icons.clear, color: Colors.grey)
+                                    ),
                                     const Spacer(),
-                                    AnimatedScale(scale: 1.0 + 0.05 * saveAnim, duration: const Duration(milliseconds: 200), child: Text('${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}', style: TextStyle(color: Colors.grey.shade800, fontWeight: FontWeight.w600))),
+                                    Text(
+                                      '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade800,
+                                        fontWeight: FontWeight.w600
+                                      )
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 6),
                                 Expanded(
                                   child: Container(
-                                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade200)),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.grey.shade200)
+                                    ),
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                     child: TextField(
                                       controller: _ctrl,
                                       expands: true,
                                       maxLines: null,
                                       style: const TextStyle(fontSize: 16, height: 1.4),
-                                      decoration: const InputDecoration.collapsed(hintText: 'Tulis jurnal... (ceritakan perasaanmu, tiga hal yang disyukuri, rencana besok)'),
+                                      decoration: const InputDecoration.collapsed(
+                                        hintText: 'Tulis jurnal... (ceritakan perasaanmu, tiga hal yang disyukuri, rencana besok)'
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1124,13 +1669,29 @@ class _DailyJournalPageState extends State<DailyJournalPage> with TickerProvider
                                     const Icon(Icons.thermostat, color: Colors.deepOrange),
                                     const SizedBox(width: 8),
                                     Expanded(
-                                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                        Text('Tingkat stres: $_stress / 10', style: const TextStyle(fontWeight: FontWeight.w600)),
-                                        Slider(value: _stress.toDouble(), min: 0, max: 10, divisions: 10, activeColor: Colors.deepOrange, onChanged: (v) => setState(() => _stress = v.round())),
-                                      ]),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Tingkat stres: $_stress / 10',
+                                            style: const TextStyle(fontWeight: FontWeight.w600)
+                                          ),
+                                          Slider(
+                                            value: _stress.toDouble(),
+                                            min: 0,
+                                            max: 10,
+                                            divisions: 10,
+                                            activeColor: Colors.deepOrange,
+                                            onChanged: (v) => setState(() => _stress = v.round())
+                                          ),
+                                        ]
+                                      ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Text('${_ctrl.text.length} chars', style: TextStyle(color: Colors.grey.shade700)),
+                                    Text(
+                                      '${_ctrl.text.length} chars',
+                                      style: TextStyle(color: Colors.grey.shade700)
+                                    ),
                                   ],
                                 ),
 
@@ -1139,9 +1700,25 @@ class _DailyJournalPageState extends State<DailyJournalPage> with TickerProvider
                                     Expanded(
                                       child: ElevatedButton.icon(
                                         onPressed: _saving ? null : _onSave,
-                                        icon: _saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.save),
+                                        icon: _saving
+                                            ? const SizedBox(
+                                                width: 16,
+                                                height: 16,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: Colors.white
+                                                )
+                                              )
+                                            : const Icon(Icons.save),
                                         label: Text(_saving ? 'Menyimpan...' : 'Simpan & Tutup'),
-                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.deepPurple,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(vertical: 14),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(10)
+                                          )
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 12),
@@ -1150,7 +1727,13 @@ class _DailyJournalPageState extends State<DailyJournalPage> with TickerProvider
                                         onPressed: _saving ? null : () => Navigator.pop(context),
                                         icon: const Icon(Icons.cancel_outlined),
                                         label: const Text('Batal'),
-                                        style: OutlinedButton.styleFrom(foregroundColor: Colors.indigo, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: Colors.indigo,
+                                          padding: const EdgeInsets.symmetric(vertical: 14),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(10)
+                                          )
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -1184,9 +1767,23 @@ class DosenHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final users = InMemoryService.allUsers();
     return Scaffold(
-      appBar: AppBar(title: Text('Home Dosen - $username'), backgroundColor: Colors.deepPurple, actions: [
-        IconButton(onPressed: () => Navigator.pushAndRemoveUntil(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const LoginPage(), transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c)), (r) => false), icon: const Icon(Icons.logout))
-      ]),
+      appBar: AppBar(
+        title: Text('Home Dosen - $username'),
+        backgroundColor: Colors.deepPurple,
+        actions: [
+          IconButton(
+            onPressed: () => Navigator.pushAndRemoveUntil(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const LoginPage(),
+                transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c)
+              ),
+              (r) => false
+            ),
+            icon: const Icon(Icons.logout)
+          )
+        ]
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12.0),
@@ -1195,12 +1792,24 @@ class DosenHomePage extends StatelessWidget {
               color: Colors.deepPurple.shade50,
               elevation: 4,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: ListTile(leading: CircleAvatar(backgroundColor: Colors.deepPurple.shade100, child: const Icon(Icons.monitor_heart, color: Colors.deepPurple)), title: const Text('Monitoring Mahasiswa'), subtitle: Text('Jumlah terdaftar: ${users.length}')),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.deepPurple.shade100,
+                  child: const Icon(Icons.monitor_heart, color: Colors.deepPurple)
+                ),
+                title: const Text('Monitoring Mahasiswa'),
+                subtitle: Text('Jumlah terdaftar: ${users.length}')
+              ),
             ),
             const SizedBox(height: 12),
             Expanded(
               child: users.isEmpty
-                  ? Center(child: Text('Belum ada mahasiswa terdaftar', style: TextStyle(color: Colors.grey.shade600)))
+                  ? Center(
+                      child: Text(
+                        'Belum ada mahasiswa terdaftar',
+                        style: TextStyle(color: Colors.grey.shade600)
+                      )
+                    )
                   : ListView.separated(
                       itemCount: users.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 6),
@@ -1210,16 +1819,28 @@ class DosenHomePage extends StatelessWidget {
                         return Card(
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           child: ListTile(
-                            leading: CircleAvatar(child: Text(u.name.isNotEmpty ? u.name[0].toUpperCase() : 'U')),
+                            leading: CircleAvatar(
+                              child: Text(u.name.isNotEmpty ? u.name[0].toUpperCase() : 'U')
+                            ),
                             title: Text(u.name),
                             subtitle: Text('${u.major} • ${u.age} tahun • entri: $count'),
                             trailing: IconButton(
                               icon: const Icon(Icons.visibility),
-                              onPressed: () => Navigator.push(context, PageRouteBuilder(pageBuilder: (_, anim, __) => FadeTransition(opacity: anim, child: DosenViewUserProfileWithHistory(user: u)), transitionDuration: const Duration(milliseconds: 380))),
+                              onPressed: () => Navigator.push(
+                                context,
+                                PageRouteBuilder(
+                                  pageBuilder: (_, anim, __) => FadeTransition(
+                                    opacity: anim,
+                                    child: DosenViewUserProfileWithHistory(user: u)
+                                  ),
+                                  transitionDuration: const Duration(milliseconds: 380)
+                                )
+                              ),
                             ),
                           ),
                         );
-                      }),
+                      }
+                    ),
             ),
           ]),
         ),
@@ -1240,25 +1861,54 @@ class DosenViewUserProfileWithHistory extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(children: [
-          CircleAvatar(radius: 46, child: Text(user.name.isNotEmpty ? user.name[0] : 'U', style: const TextStyle(fontSize: 36))),
+          CircleAvatar(
+            radius: 46,
+            child: Text(
+              user.name.isNotEmpty ? user.name[0] : 'U',
+              style: const TextStyle(fontSize: 36)
+            )
+          ),
           const SizedBox(height: 12),
           Text(user.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Card(child: Padding(padding: const EdgeInsets.all(12.0), child: Column(children: [
-            _infoRow('Username', user.username),
-            _infoRow('Nama', user.name),
-            _infoRow('Usia', '${user.age}'),
-            _infoRow('Jurusan', user.major),
-            _infoRow('Email', user.email),
-            _infoRow('Jumlah Entri', '${entries.length}'),
-          ]))),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(children: [
+                _infoRow('Username', user.username),
+                _infoRow('Nama', user.name),
+                _infoRow('Usia', '${user.age}'),
+                _infoRow('Jurusan', user.major),
+                _infoRow('Email', user.email),
+                _infoRow('Jumlah Entri', '${entries.length}'),
+              ])
+            )
+          ),
           const SizedBox(height: 12),
           const Text('Riwayat Entri:', style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          Expanded(child: entries.isEmpty ? Center(child: Text('Belum ada entri', style: TextStyle(color: Colors.grey.shade600))) : ListView.separated(itemCount: entries.length, separatorBuilder: (_, __) => const Divider(), itemBuilder: (c, i) {
-            final e = entries[i];
-            return ListTile(leading: CircleAvatar(child: Text(e.mood.isNotEmpty ? e.mood[0] : 'M')), title: Text('${e.mood} • Stress ${e.stressLevel}/10'), subtitle: Text(e.note.isEmpty ? '(tidak ada catatan)' : e.note), trailing: Text('${e.timestamp.day}/${e.timestamp.month}/${e.timestamp.year}'));
-          })),
+          Expanded(
+            child: entries.isEmpty
+                ? Center(
+                    child: Text(
+                      'Belum ada entri',
+                      style: TextStyle(color: Colors.grey.shade600)
+                    )
+                  )
+                : ListView.separated(
+                    itemCount: entries.length,
+                    separatorBuilder: (_, __) => const Divider(),
+                    itemBuilder: (c, i) {
+                      final e = entries[i];
+                      return ListTile(
+                        leading: CircleAvatar(child: Text(e.mood.isNotEmpty ? e.mood[0] : 'M')),
+                        title: Text('${e.mood} • Stress ${e.stressLevel}/10'),
+                        subtitle: Text(e.note.isEmpty ? '(tidak ada catatan)' : e.note),
+                        trailing: Text('${e.timestamp.day}/${e.timestamp.month}/${e.timestamp.year}')
+                      );
+                    }
+                  )
+          ),
         ]),
       ),
     );
@@ -1269,4 +1919,13 @@ class DosenViewUserProfileWithHistory extends StatelessWidget {
    Utilities
    =========================== */
 
-Widget _infoRow(String label, String value) => Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Row(children: [SizedBox(width: 110, child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w600))), Expanded(child: Text(value))]));
+Widget _infoRow(String label, String value) => Padding(
+  padding: const EdgeInsets.symmetric(vertical: 6),
+  child: Row(children: [
+    SizedBox(
+      width: 110,
+      child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w600))
+    ),
+    Expanded(child: Text(value))
+  ])
+);
